@@ -1,11 +1,1924 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>My Page</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Old Mark — Market Simulator</title>
+<style>
+:root{
+  --cream:#f5e6c8;--dcream:#d4c4a0;--amber:#c8860a;--damber:#8a5c07;
+  --wood:#5c3317;--dark:#1a0d00;--darker:#0d0700;--green:#5aaa5a;
+  --red:#c84a4a;--panel:#2a1400;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--darker);color:var(--cream);font-family:Georgia,'Times New Roman',serif;
+  overflow:hidden;width:100vw;height:100vh;user-select:none;}
+canvas{display:block;}
+.screen{position:absolute;inset:0;display:none;opacity:0;transition:opacity .7s ease;}
+.screen.active{display:flex;opacity:1;}
+
+/* ── INTRO ── */
+#intro{background:#000;align-items:center;justify-content:center;cursor:pointer;flex-direction:column;}
+#intro-canvas{position:absolute;inset:0;}
+
+/* ── MENU ── */
+#menu{flex-direction:column;align-items:center;justify-content:center;
+  background:radial-gradient(ellipse at 50% 35%,#3d1a00 0%,#0a0500 75%);}
+#menu-canvas{position:absolute;inset:0;opacity:.5;}
+.menu-wrap{position:relative;z-index:5;text-align:center;animation:mfade 1.2s ease both;}
+@keyframes mfade{from{opacity:0;transform:translateY(18px);}to{opacity:1;transform:none;}}
+.gtitle{font-size:clamp(56px,9vw,100px);font-style:italic;font-weight:bold;color:var(--amber);
+  letter-spacing:10px;text-shadow:0 0 60px #c8860a66,4px 4px 0 #1a0700;line-height:1;}
+.gsub{font-size:16px;letter-spacing:8px;text-transform:uppercase;color:var(--dcream);margin:8px 0 50px;}
+.mdiv{width:180px;height:1px;background:linear-gradient(to right,transparent,var(--amber),transparent);margin:0 auto 24px;}
+.mbtn{display:block;width:240px;margin:10px auto;padding:13px 0;background:transparent;
+  border:2px solid var(--amber);color:var(--cream);font:18px Georgia,serif;
+  letter-spacing:3px;text-transform:uppercase;cursor:pointer;position:relative;overflow:hidden;transition:.22s;}
+.mbtn::before{content:'';position:absolute;inset:0;background:var(--amber);transform:scaleX(0);
+  transform-origin:left;transition:transform .22s;z-index:-1;}
+.mbtn:hover{color:var(--dark);}.mbtn:hover::before{transform:scaleX(1);}
+.mver{position:absolute;bottom:14px;right:20px;font-size:11px;color:#5c3317;letter-spacing:2px;}
+
+/* ── GAME ── */
+#game{flex-direction:column;}
+#topbar{height:50px;background:linear-gradient(to bottom,#3d1a00,#2a1200);
+  border-bottom:2px solid var(--amber);display:flex;align-items:center;
+  padding:0 14px;gap:14px;flex-shrink:0;}
+#store-title{font-size:19px;font-style:italic;color:var(--amber);font-weight:bold;
+  letter-spacing:2px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.sbox{display:flex;align-items:center;gap:6px;padding:3px 12px;
+  border:1px solid #8a5c0755;background:#1a0d0077;border-radius:1px;}
+.slbl{font-size:10px;color:var(--dcream);text-transform:uppercase;letter-spacing:1px;}
+.sval{font-size:16px;color:var(--amber);font-weight:bold;min-width:65px;text-align:right;}
+#mval{color:var(--green);}
+.tbtn{padding:5px 14px;background:transparent;border:1px solid var(--amber);color:var(--amber);
+  font:13px Georgia,serif;letter-spacing:2px;cursor:pointer;transition:.2s;}
+.tbtn:hover{background:var(--amber);color:var(--dark);}
+.tbtn.danger{border-color:var(--red);color:var(--red);}
+.tbtn.danger:hover{background:var(--red);color:#fff;}
+
+#gbody{flex:1;display:flex;overflow:hidden;}
+
+/* ── SIDEBAR ── */
+#sidebar{width:172px;background:linear-gradient(to bottom,#2a1200,#1a0d00);
+  border-right:2px solid #2a1200;display:flex;flex-direction:column;flex-shrink:0;}
+.slabel{font-size:10px;color:#8a6a40;text-transform:uppercase;letter-spacing:2px;
+  padding:10px 12px 4px;}
+.nvbtn{display:flex;align-items:center;gap:9px;width:100%;padding:9px 12px;
+  background:transparent;border:none;color:var(--dcream);font:14px Georgia,serif;
+  cursor:pointer;transition:.18s;border-left:3px solid transparent;text-align:left;}
+.nvbtn:hover{background:#3d1a0033;color:var(--cream);border-left-color:#5c3317;}
+.nvbtn.on{background:#3d1a0066;color:var(--amber);border-left-color:var(--amber);}
+.nvi{font-size:17px;width:22px;text-align:center;}
+#dstats{padding:12px;margin-top:auto;border-top:1px solid #2a1200;}
+.drow{display:flex;justify-content:space-between;margin-bottom:5px;}
+.dlbl{font-size:11px;color:#8a7050;}.dval{font-size:11px;color:var(--cream);}
+
+/* ── MAIN VIEW ── */
+#mainview{flex:1;position:relative;overflow:hidden;background:#1a0d00;}
+
+/* canvases */
+#store-canvas,#cashier-canvas{position:absolute;inset:0;width:100%;height:100%;}
+
+/* ── PANELS ── */
+.panel{position:absolute;inset:0;display:none;flex-direction:column;
+  background:#12080000;overflow-y:auto;padding:22px 26px;}
+.panel.on{display:flex;}
+.ptitle{font-size:26px;color:var(--amber);font-style:italic;border-bottom:1px solid #3d1a00;
+  padding-bottom:12px;margin-bottom:20px;flex-shrink:0;}
+.pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px;}
+.pcard{background:#2a1400;border:1px solid #3d1a00;padding:14px;transition:border-color .18s;}
+.pcard:hover{border-color:#5c3317;}
+.pcname{font-size:15px;color:var(--cream);margin-bottom:5px;}
+.pcdesc{font-size:12px;color:#8a7050;line-height:1.55;margin-bottom:10px;}
+.pccost{font-size:13px;color:var(--green);margin-bottom:9px;}
+.pcbtn{width:100%;padding:7px;background:transparent;border:1px solid var(--amber);
+  color:var(--amber);font:13px Georgia,serif;cursor:pointer;transition:.18s;}
+.pcbtn:hover:not(:disabled){background:var(--amber);color:var(--dark);}
+.pcbtn:disabled{opacity:.35;cursor:not-allowed;border-color:#3d1a00;color:#5c3317;}
+.badge-own{display:inline-block;padding:2px 8px;background:#1a3a0a;color:#70c040;
+  font-size:11px;letter-spacing:1px;text-transform:uppercase;margin-top:6px;}
+.badge-need{display:inline-block;padding:2px 8px;background:#3a1a00;color:#c8a040;
+  font-size:11px;letter-spacing:1px;text-transform:uppercase;margin-top:6px;}
+.sechdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.sectitle{font-size:13px;color:var(--dcream);text-transform:uppercase;letter-spacing:2px;}
+.prow{display:flex;align-items:center;gap:10px;padding:9px 13px;
+  background:#2a1400;border:1px solid #2e1600;margin-bottom:6px;transition:.18s;}
+.prow:hover{border-color:#3d1a00;}
+.pclr{width:14px;height:14px;border-radius:2px;flex-shrink:0;}
+.pinfo{flex:1;}.pname{font-size:13px;color:var(--cream);}.pcat{font-size:10px;color:#8a7050;text-transform:uppercase;letter-spacing:1px;}
+.qctrl{display:flex;align-items:center;gap:7px;}
+.qbtn{width:26px;height:26px;background:#1a0d00;border:1px solid #3d1a00;color:var(--cream);
+  font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.18s;}
+.qbtn:hover{border-color:var(--amber);color:var(--amber);}
+.qval{font-size:14px;color:var(--amber);min-width:28px;text-align:center;}
+.ocost{font-size:12px;color:var(--green);min-width:55px;text-align:right;}
+.stbar{height:5px;background:#1a0d00;border:1px solid #2a1200;border-radius:1px;overflow:hidden;margin:3px 0;}
+.stfill{height:100%;background:var(--amber);transition:width .3s;}
+.stfill.lo{background:var(--red);}.stfill.md{background:#c8a040;}
+.dlvrow{display:flex;align-items:center;gap:12px;padding:10px 14px;
+  background:#2a1400;border:1px solid #2e1600;margin-bottom:6px;}
+.dlvst{font-size:10px;padding:2px 8px;text-transform:uppercase;letter-spacing:1px;}
+.dlvst.pend{background:#3d2a00;color:#c8a040;}.dlvst.arr{background:#1a3a1a;color:var(--green);}
+.empcard{display:flex;align-items:center;gap:12px;padding:12px;background:#2a1400;
+  border:1px solid #2e1600;margin-bottom:8px;}
+.empav{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-size:24px;background:#1a0d00;border:2px solid #3d1a00;flex-shrink:0;}
+.empi{flex:1;}.empn{font-size:14px;color:var(--cream);}.empr{font-size:11px;color:#8a7050;}
+.empw{font-size:12px;color:var(--red);}
+.expcard{display:flex;gap:14px;padding:14px;background:#2a1400;border:1px solid #2e1600;margin-bottom:10px;}
+.expprev{width:72px;height:54px;background:#1a0d00;border:1px solid #3d1a00;
+  display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0;}
+.expinfo{flex:1;}.expname{font-size:15px;color:var(--cream);margin-bottom:4px;}
+.expdesc{font-size:12px;color:#8a7050;line-height:1.5;margin-bottom:8px;}
+.liccard{display:flex;gap:14px;padding:16px;background:#2a1400;border:1px solid #2e1600;
+  margin-bottom:10px;transition:border-color .18s;}
+.liccard.own{border-color:#3a5a20;}
+.licico{width:50px;height:50px;background:#1a0d00;border:1px solid #3d1a00;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0;}
+.licinfo{flex:1;}
+.licname{font-size:15px;color:var(--cream);margin-bottom:4px;}
+.licdesc{font-size:12px;color:#8a7050;line-height:1.5;margin-bottom:8px;}
+
+/* ── MODALS ── */
+.moverlay{position:fixed;inset:0;background:#0a050088;display:none;
+  align-items:center;justify-content:center;z-index:500;}
+.moverlay.open{display:flex;}
+.modal{background:#2a1400;border:2px solid var(--amber);padding:26px;
+  min-width:360px;max-width:500px;width:90%;position:relative;animation:min .2s ease;}
+@keyframes min{from{opacity:0;transform:scale(.95);}to{opacity:1;transform:none;}}
+.mtitle{font-size:21px;color:var(--amber);font-style:italic;margin-bottom:18px;}
+.mclose{position:absolute;top:10px;right:14px;background:none;border:none;
+  color:var(--dcream);font-size:22px;cursor:pointer;line-height:1;}
+.mclose:hover{color:var(--amber);}
+.fgrp{margin-bottom:14px;}
+.flbl{display:block;font-size:11px;color:#8a7050;text-transform:uppercase;
+  letter-spacing:1px;margin-bottom:5px;}
+.finp{width:100%;padding:7px 11px;background:#1a0d00;border:1px solid #3d1a00;
+  color:var(--cream);font:15px Georgia,serif;outline:none;transition:.18s;}
+.finp:focus{border-color:var(--amber);}
+select.finp{cursor:pointer;}
+.brow{display:flex;gap:10px;margin-top:18px;}
+.bpri{flex:1;padding:9px;background:var(--amber);border:none;color:var(--dark);
+  font:bold 14px Georgia,serif;cursor:pointer;transition:.18s;}
+.bpri:hover{background:#dfa020;}
+.bsec{flex:1;padding:9px;background:transparent;border:1px solid #3d1a00;color:var(--dcream);
+  font:14px Georgia,serif;cursor:pointer;transition:.18s;}
+.bsec:hover{border-color:var(--cream);color:var(--cream);}
+.saveslot{display:flex;align-items:center;gap:12px;padding:12px;background:#1a0d00;
+  border:1px solid #3d1a00;margin-bottom:8px;cursor:pointer;transition:.18s;}
+.saveslot:hover{border-color:var(--amber);}.saveslot .ssname{font-size:14px;color:var(--cream);}
+.saveslot .ssinfo{font-size:11px;color:#8a7050;}.saveslot .ssico{font-size:24px;}
+.saveslot.empty{opacity:.45;cursor:default;}.saveslot.empty:hover{border-color:#3d1a00;}
+
+/* ── NOTIFICATIONS ── */
+#notifs{position:fixed;bottom:18px;right:18px;z-index:900;
+  display:flex;flex-direction:column;gap:7px;pointer-events:none;}
+.notif{background:#2a1400;border:1px solid var(--amber);border-left:4px solid var(--amber);
+  padding:9px 14px;font-size:13px;color:var(--cream);
+  animation:nIn .3s ease,nOut .3s ease 2.7s forwards;}
+.notif.err{border-color:var(--red);border-left-color:var(--red);}
+.notif.ok{border-color:var(--green);border-left-color:var(--green);}
+@keyframes nIn{from{opacity:0;transform:translateX(18px);}to{opacity:1;transform:none;}}
+@keyframes nOut{to{opacity:0;transform:translateX(18px);}}
+
+/* ── MONEY POPUP ── */
+.mopop{position:absolute;color:var(--green);font:bold 15px Georgia,serif;
+  pointer-events:none;animation:mflt 1.4s ease forwards;z-index:400;}
+@keyframes mflt{0%{opacity:1;transform:translateY(0);}100%{opacity:0;transform:translateY(-48px);}}
+
+/* ── GRAIN OVERLAY ── */
+body::after{content:'';position:fixed;inset:0;pointer-events:none;opacity:.18;z-index:9999;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");}
+
+/* scrollbar */
+::-webkit-scrollbar{width:5px;}
+::-webkit-scrollbar-track{background:#1a0d00;}
+::-webkit-scrollbar-thumb{background:#3d1a00;}
+::-webkit-scrollbar-thumb:hover{background:var(--amber);}
+</style>
 </head>
 <body>
-  <h1>Hello, World!</h1>
-  <p>This is a basic HTML file.</p>
+
+<!-- INTRO -->
+<div id="intro" class="screen active">
+  <canvas id="intro-canvas"></canvas>
+</div>
+
+<!-- MENU -->
+<div id="menu" class="screen">
+  <canvas id="menu-canvas"></canvas>
+  <div class="menu-wrap">
+    <div class="gtitle">OLD MARK</div>
+    <div class="gsub">Market Simulator</div>
+    <div class="mdiv"></div>
+    <button class="mbtn" id="btn-new">New Game</button>
+    <button class="mbtn" id="btn-load">Load Game</button>
+    <button class="mbtn" id="btn-about">About</button>
+  </div>
+  <div class="mver">v1.0 · A Vintage Experience</div>
+</div>
+
+<!-- GAME -->
+<div id="game" class="screen">
+  <!-- Topbar -->
+  <div id="topbar">
+    <div id="store-title">Old Mark's Market</div>
+    <div class="sbox"><span class="slbl">Cash</span><span class="sval" id="mval">$500.00</span></div>
+    <div class="sbox"><span class="slbl">Day</span><span class="sval" id="dayval">1</span></div>
+    <div class="sbox"><span class="slbl">Time</span><span class="sval" id="timeval" style="font-size:13px;min-width:75px;">8:00 AM</span></div>
+    <button class="tbtn" id="btn-pause">⏸ Pause</button>
+    <button class="tbtn" id="btn-spd">1× Speed</button>
+    <button class="tbtn" id="btn-save">💾 Save</button>
+    <button class="tbtn danger" id="btn-tomenu">Menu</button>
+  </div>
+
+  <!-- Body -->
+  <div id="gbody">
+    <!-- Sidebar -->
+    <div id="sidebar">
+      <div class="slabel">Views</div>
+      <button class="nvbtn on" data-view="store"><span class="nvi">🏪</span>Store View</button>
+      <button class="nvbtn" data-view="cashier"><span class="nvi">💵</span>Cashier</button>
+      <div class="slabel" style="margin-top:8px;">Management</div>
+      <button class="nvbtn" data-panel="shipments"><span class="nvi">📦</span>Shipments</button>
+      <button class="nvbtn" data-panel="employees"><span class="nvi">👤</span>Employees</button>
+      <button class="nvbtn" data-panel="licenses"><span class="nvi">📜</span>Licenses</button>
+      <button class="nvbtn" data-panel="expansion"><span class="nvi">🏗️</span>Expansion</button>
+      <div id="dstats">
+        <div class="slabel" style="padding:0 0 8px 0;">Today</div>
+        <div class="drow"><span class="dlbl">Revenue</span><span class="dval" id="ds-sales" style="color:var(--green);">$0.00</span></div>
+        <div class="drow"><span class="dlbl">Customers</span><span class="dval" id="ds-custs">0</span></div>
+        <div class="drow"><span class="dlbl">Items Sold</span><span class="dval" id="ds-items">0</span></div>
+        <div class="drow" style="margin-top:6px;border-top:1px solid #2a1200;padding-top:6px;">
+          <span class="dlbl">All-Time</span><span class="dval" id="ds-total" style="color:var(--green);">$0.00</span></div>
+      </div>
+    </div>
+
+    <!-- Main View -->
+    <div id="mainview">
+      <canvas id="store-canvas"></canvas>
+      <canvas id="cashier-canvas" style="display:none;"></canvas>
+
+      <!-- SHIPMENTS PANEL -->
+      <div class="panel" id="panel-shipments">
+        <div class="ptitle">📦 Shipments &amp; Stock</div>
+        <div id="stockroom-info" style="background:#1a0d00;border:1px solid #2a1200;padding:12px;margin-bottom:18px;"></div>
+        <div class="sechdr">
+          <span class="sectitle">Place Order</span>
+          <span style="font-size:12px;color:#8a7050;">Arrives next morning</span>
+        </div>
+        <div id="order-list"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;
+          border-top:1px solid #2a1200;padding-top:14px;margin-top:8px;flex-shrink:0;">
+          <div>
+            <div style="font-size:11px;color:#8a7050;">Order Total</div>
+            <div style="font-size:20px;color:var(--green);" id="order-total">$0.00</div>
+          </div>
+          <button class="bpri" style="width:150px;" id="btn-placeorder">Place Order</button>
+        </div>
+        <div style="margin-top:22px;flex-shrink:0;">
+          <div class="sectitle" style="margin-bottom:10px;">Pending Deliveries</div>
+          <div id="deliveries-list"></div>
+        </div>
+      </div>
+
+      <!-- EMPLOYEES PANEL -->
+      <div class="panel" id="panel-employees">
+        <div class="ptitle">👤 Employees</div>
+        <div class="sechdr">
+          <span class="sectitle">Available Positions</span>
+          <span style="font-size:11px;color:#8a7050;">Wages paid nightly</span>
+        </div>
+        <div class="pgrid" id="hire-grid" style="margin-bottom:22px;"></div>
+        <div class="sectitle" style="margin-bottom:12px;">Your Staff (<span id="staff-count">0</span>)</div>
+        <div id="staff-list"></div>
+      </div>
+
+      <!-- LICENSES PANEL -->
+      <div class="panel" id="panel-licenses">
+        <div class="ptitle">📜 Licenses &amp; Permits</div>
+        <p style="font-size:13px;color:#8a7050;margin-bottom:18px;line-height:1.65;">
+          Licenses allow you to stock and sell new product categories.<br>
+          Some licenses require prerequisite permits to be obtained first.
+        </p>
+        <div id="lic-list"></div>
+      </div>
+
+      <!-- EXPANSION PANEL -->
+      <div class="panel" id="panel-expansion">
+        <div class="ptitle">🏗️ Store Expansion</div>
+        <p style="font-size:13px;color:#8a7050;margin-bottom:16px;line-height:1.65;">
+          Expand your market to unlock more shelf space, attract more customers, and grow your empire.
+        </p>
+        <canvas id="exp-preview" height="140" style="border:1px solid #2a1200;margin-bottom:20px;background:#0d0700;"></canvas>
+        <div id="exp-list"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: New Game -->
+<div class="moverlay" id="mo-new">
+  <div class="modal">
+    <button class="mclose" data-close="mo-new">×</button>
+    <div class="mtitle">Open Your Market</div>
+    <div class="fgrp">
+      <label class="flbl">Your Name</label>
+      <input class="finp" id="inp-owner" type="text" placeholder="e.g. Mark" maxlength="20">
+    </div>
+    <div class="fgrp">
+      <label class="flbl">Store Name</label>
+      <input class="finp" id="inp-store" type="text" placeholder="Old Mark's Market" maxlength="32">
+    </div>
+    <div class="fgrp">
+      <label class="flbl">Save Slot</label>
+      <select class="finp" id="sel-slot">
+        <option value="0">Slot 1</option>
+        <option value="1">Slot 2</option>
+        <option value="2">Slot 3</option>
+      </select>
+    </div>
+    <div class="brow">
+      <button class="bsec" data-close="mo-new">Cancel</button>
+      <button class="bpri" id="btn-startnew">Open For Business!</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Load Game -->
+<div class="moverlay" id="mo-load">
+  <div class="modal">
+    <button class="mclose" data-close="mo-load">×</button>
+    <div class="mtitle">Load Game</div>
+    <div id="save-slots"></div>
+    <button class="bsec" style="width:100%;margin-top:10px;" data-close="mo-load">Cancel</button>
+  </div>
+</div>
+
+<!-- MODAL: About -->
+<div class="moverlay" id="mo-about">
+  <div class="modal" style="text-align:center;">
+    <button class="mclose" data-close="mo-about">×</button>
+    <div class="mtitle" style="text-align:center;">Old Mark</div>
+    <div style="font-size:14px;color:#8a7050;line-height:1.8;margin-bottom:18px;">
+      A vintage market management sim.<br>
+      Stock your shelves. Set your prices.<br>
+      Serve your community. Build your empire.<br><br>
+      <em style="color:var(--dcream);">"Every great market started with one shelf."</em>
+    </div>
+    <button class="bsec" style="width:100%;" data-close="mo-about">Close</button>
+  </div>
+</div>
+
+<!-- MODAL: Shelf Manager -->
+<div class="moverlay" id="mo-shelf">
+  <div class="modal">
+    <button class="mclose" data-close="mo-shelf">×</button>
+    <div class="mtitle" id="shelf-modal-title">Manage Shelf</div>
+    <div class="fgrp">
+      <label class="flbl">Shelf Name / Label</label>
+      <input class="finp" id="shelf-lbl" type="text" placeholder="e.g. Canned Goods, Produce..." maxlength="24">
+    </div>
+    <div class="fgrp">
+      <label class="flbl">Product</label>
+      <select class="finp" id="shelf-prod"></select>
+    </div>
+    <div class="fgrp">
+      <label class="flbl">Selling Price ($)</label>
+      <input class="finp" id="shelf-price" type="number" step="0.01" min="0.01" placeholder="0.00">
+    </div>
+    <div style="background:#1a0d00;border:1px solid #2a1200;padding:12px;margin-bottom:4px;">
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+        <span style="font-size:12px;color:#8a7050;">On Shelf</span>
+        <span style="font-size:12px;color:var(--cream);" id="sm-onshelf">0 / 20</span>
+      </div>
+      <div class="stbar"><div class="stfill" id="sm-bar" style="width:0%;"></div></div>
+      <div style="display:flex;justify-content:space-between;margin-top:8px;">
+        <span style="font-size:12px;color:#8a7050;">In Stock Room</span>
+        <span style="font-size:12px;color:var(--amber);" id="sm-stroom">0 units</span>
+      </div>
+    </div>
+    <div class="brow">
+      <button class="bsec" id="btn-restock">📦 Restock</button>
+      <button class="bpri" id="btn-saveshelf">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Hire Confirm -->
+<div class="moverlay" id="mo-hire">
+  <div class="modal">
+    <button class="mclose" data-close="mo-hire">×</button>
+    <div class="mtitle" id="hire-modal-title">Hire Employee</div>
+    <p style="font-size:13px;color:#8a7050;margin-bottom:18px;" id="hire-modal-desc"></p>
+    <div class="brow">
+      <button class="bsec" data-close="mo-hire">Cancel</button>
+      <button class="bpri" id="btn-confirm-hire">Hire!</button>
+    </div>
+  </div>
+</div>
+
+<!-- Notifications -->
+<div id="notifs"></div>
+
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════════════════
+// DATA CONSTANTS
+// ═══════════════════════════════════════════════════════
+const PRODUCTS = [
+  {id:'soup',     name:'Canned Soup',    cat:'general', color:'#c87050',cost:.60, price:1.29,demand:.80},
+  {id:'beans',    name:'Canned Beans',   cat:'general', color:'#8b7340',cost:.45, price:.99, demand:.70},
+  {id:'rice',     name:'Rice 5 lb',      cat:'general', color:'#f0ead0',cost:1.20,price:2.49,demand:.90},
+  {id:'pasta',    name:'Pasta',          cat:'general', color:'#f0c878',cost:.80, price:1.69,demand:.75},
+  {id:'coffee',   name:'Coffee',         cat:'general', color:'#4a2800',cost:2.50,price:5.99,demand:.85},
+  {id:'tea',      name:'Tea Box',        cat:'general', color:'#78a050',cost:1.20,price:2.99,demand:.60},
+  {id:'cereal',   name:'Cereal',         cat:'general', color:'#c8a050',cost:1.80,price:3.99,demand:.70},
+  {id:'juice',    name:'Orange Juice',   cat:'general', color:'#f07820',cost:1.50,price:3.49,demand:.65},
+  {id:'apples',   name:'Apples',         cat:'produce', color:'#e03830',cost:1.20,price:2.99,demand:.80},
+  {id:'bananas',  name:'Bananas',        cat:'produce', color:'#f0d020',cost:.40, price:.89, demand:.90},
+  {id:'tomatoes', name:'Tomatoes',       cat:'produce', color:'#e04820',cost:.60, price:1.49,demand:.75},
+  {id:'potatoes', name:'Potatoes 5 lb',  cat:'produce', color:'#a08040',cost:1.00,price:2.29,demand:.70},
+  {id:'lettuce',  name:'Lettuce',        cat:'produce', color:'#50a840',cost:.70, price:1.79,demand:.60},
+  {id:'milk',     name:'Whole Milk',     cat:'dairy',   color:'#d8d8e8',cost:2.00,price:4.29,demand:.95},
+  {id:'cheese',   name:'Cheddar',        cat:'dairy',   color:'#e0a820',cost:2.50,price:5.49,demand:.70},
+  {id:'butter',   name:'Butter',         cat:'dairy',   color:'#f0d060',cost:1.80,price:3.99,demand:.65},
+  {id:'eggs',     name:'Eggs Dozen',     cat:'dairy',   color:'#f0e8d0',cost:1.50,price:3.49,demand:.90},
+  {id:'yogurt',   name:'Yogurt',         cat:'dairy',   color:'#f8f0e8',cost:.80, price:1.99,demand:.60},
+  {id:'bread',    name:'White Bread',    cat:'bakery',  color:'#d4a060',cost:1.00,price:2.49,demand:.90},
+  {id:'muffins',  name:'Muffins 6 pk',   cat:'bakery',  color:'#c87830',cost:1.50,price:3.49,demand:.60},
+  {id:'donuts',   name:'Donuts 6 pk',    cat:'bakery',  color:'#f09060',cost:1.80,price:3.99,demand:.65},
+  {id:'cookies',  name:'Cookies',        cat:'bakery',  color:'#c89050',cost:2.00,price:4.49,demand:.55},
+  {id:'chicken',  name:'Chicken Breast', cat:'meat',    color:'#f0b080',cost:3.00,price:6.99,demand:.85},
+  {id:'beef',     name:'Ground Beef',    cat:'meat',    color:'#c05030',cost:3.50,price:7.99,demand:.75},
+  {id:'sausage',  name:'Sausages',       cat:'meat',    color:'#b06040',cost:2.50,price:5.49,demand:.65},
+  {id:'ham',      name:'Deli Ham',       cat:'meat',    color:'#e07080',cost:2.20,price:4.99,demand:.60},
+  {id:'icecream', name:'Ice Cream',      cat:'frozen',  color:'#e8d0e8',cost:2.50,price:5.49,demand:.70},
+  {id:'frz_pizza',name:'Frozen Pizza',   cat:'frozen',  color:'#e07040',cost:2.80,price:5.99,demand:.75},
+  {id:'fishstick',name:'Fish Sticks',    cat:'frozen',  color:'#d0c080',cost:2.00,price:4.49,demand:.55},
+  {id:'beer',     name:'Beer 6 pk',      cat:'alcohol', color:'#d0a030',cost:4.00,price:8.99,demand:.70},
+  {id:'wine',     name:'Red Wine',       cat:'alcohol', color:'#600030',cost:5.00,price:11.99,demand:.55},
+  {id:'whiskey',  name:'Whiskey',        cat:'alcohol', color:'#a06020',cost:12.00,price:24.99,demand:.35},
+];
+const PROD_MAP = Object.fromEntries(PRODUCTS.map(p=>[p.id,p]));
+
+const LICENSES_DEF = [
+  {id:'produce', name:'Produce License',      desc:'Sell fresh fruits & vegetables',          cost:500,  emoji:'🥦', req:null},
+  {id:'dairy',   name:'Dairy License',        desc:'Sell milk, eggs, cheese & dairy',         cost:800,  emoji:'🥛', req:null},
+  {id:'bakery',  name:'Bakery License',       desc:'Sell breads, pastries & baked goods',     cost:600,  emoji:'🥖', req:null},
+  {id:'meat',    name:'Meat & Deli License',  desc:'Sell fresh and packaged meats',           cost:1200, emoji:'🥩', req:'produce'},
+  {id:'frozen',  name:'Frozen Foods License', desc:'Sell frozen goods and ice cream',         cost:1000, emoji:'❄️',  req:'dairy'},
+  {id:'alcohol', name:'Liquor License',       desc:'Sell beer, wine and spirits',             cost:3000, emoji:'🍺', req:null},
+];
+
+const EXPANSIONS_DEF = [
+  {id:'ext1',name:'Back Room Addition', desc:'Adds a back storage area and 4 new shelves to your layout.',cost:2000,shelves:4,emoji:'🏗️',level:1},
+  {id:'ext2',name:'East Wing',          desc:'Extends the market eastward — 6 more shelf positions.',     cost:5000,shelves:6,emoji:'🏛️',level:2},
+  {id:'ext3',name:'Full Warehouse',     desc:'A massive expansion — doubles store capacity with 10 more shelves.',cost:15000,shelves:10,emoji:'🏭',level:3},
+];
+
+const EMP_TYPES = [
+  {id:'stocker', name:'Shelf Stocker', desc:'Auto-restocks shelves from the stockroom each morning.',wage:50, emoji:'📦'},
+  {id:'cashier', name:'Cashier',       desc:'Handles checkout — customers spend a bit more when served by staff.',wage:60, emoji:'💰'},
+  {id:'cleaner', name:'Store Cleaner', desc:'Keeps the store tidy, raising customer satisfaction.',wage:40, emoji:'🧹'},
+  {id:'manager', name:'Store Manager', desc:'Boosts all employee efficiency by 20% — a true leader.',wage:120,emoji:'👔'},
+];
+
+const EMP_NAMES = ['Earl','Betty','Roy','Marge','Clyde','Doris','Floyd','Edna','Hank','Vera','Pete','Agnes','Walt','Norma','Dale','Helen'];
+const CUST_COLORS = ['#e07060','#60a0d0','#70c070','#c0a040','#a060c0','#50b0a0','#d08040','#8090d0','#d07090','#90c060'];
+const CUST_NAMES = ['Mrs. Ruth','Mr. Hal','Young Billy','Old Ned','Sue','Frank','Clara','Jim','Dot','Walt','Bev','Phil'];
+
+// Initial shelf layout (x,y in grid cells, w,h in cells)
+const INIT_SHELVES = [
+  {gx:1,gy:1,gw:4,gh:1},{gx:7,gy:1,gw:4,gh:1},
+  {gx:1,gy:3,gw:4,gh:1},{gx:7,gy:3,gw:4,gh:1},
+  {gx:1,gy:5,gw:4,gh:1},{gx:7,gy:5,gw:4,gh:1},
+];
+
+// ═══════════════════════════════════════════════════════
+// GAME STATE
+// ═══════════════════════════════════════════════════════
+let G = null;
+function freshState(owner, storeName, slot){
+  return {
+    saveSlot: slot,
+    ownerName: owner,
+    storeName: storeName,
+    money: 500,
+    day: 1,
+    gameMin: 8*60,      // 8:00 AM in total minutes
+    speed: 1,
+    paused: false,
+    gridW: 13, gridH: 9,
+    shelves: INIT_SHELVES.map((s,i)=>({
+      id:i+1, name:`Shelf ${String.fromCharCode(65+i)}`,
+      gx:s.gx, gy:s.gy, gw:s.gw, gh:s.gh,
+      product:null, price:0, stock:0, maxStock:20
+    })),
+    stock: {},
+    licenses: {general:true,produce:false,dairy:false,bakery:false,meat:false,frozen:false,alcohol:false},
+    employees: [],
+    deliveries: [],
+    expansions: [],
+    orderQty: {},
+    todaySales:0, todayCustomers:0, todayItems:0,
+    totalSales:0, totalCustomers:0,
+    nextEmpId: 1,
+    nextDelId: 1,
+    customers: [],   // runtime only
+    cashierQueue: [],// runtime only
+    cashierRevenue:0,// today cashier total
+  };
+}
+
+// ═══════════════════════════════════════════════════════
+// SCREEN HELPERS
+// ═══════════════════════════════════════════════════════
+const screens = {intro:'#intro', menu:'#menu', game:'#game'};
+function showScreen(id){
+  Object.values(screens).forEach(s=>{
+    const el=qs(s);
+    el.classList.remove('active');
+    el.style.display='none';
+  });
+  const el=qs(screens[id]);
+  el.style.display='flex';
+  requestAnimationFrame(()=>el.classList.add('active'));
+}
+function qs(s,ctx=document){return ctx.querySelector(s);}
+function qsa(s,ctx=document){return ctx.querySelectorAll(s);}
+function fmt$(n){return'$'+Math.abs(n).toFixed(2);}
+function fmtTime(mins){
+  const h=Math.floor(mins/60)%24, m=mins%60;
+  const ampm=h<12?'AM':'PM';
+  const hr=h===0?12:h>12?h-12:h;
+  return `${hr}:${String(m).padStart(2,'0')} ${ampm}`;
+}
+
+// ═══════════════════════════════════════════════════════
+// NOTIFICATIONS
+// ═══════════════════════════════════════════════════════
+function notify(msg,type=''){
+  const el=document.createElement('div');
+  el.className='notif '+(type);
+  el.textContent=msg;
+  qs('#notifs').appendChild(el);
+  setTimeout(()=>el.remove(),3200);
+}
+
+// ═══════════════════════════════════════════════════════
+// SAVE / LOAD
+// ═══════════════════════════════════════════════════════
+function saveGame(){
+  const saved={
+    ownerName:G.ownerName, storeName:G.storeName, money:G.money,
+    day:G.day, gameMin:G.gameMin, speed:G.speed,
+    gridW:G.gridW, gridH:G.gridH,
+    shelves:G.shelves, stock:G.stock, licenses:G.licenses,
+    employees:G.employees, deliveries:G.deliveries, expansions:G.expansions,
+    orderQty:G.orderQty,
+    todaySales:G.todaySales, todayCustomers:G.todayCustomers, todayItems:G.todayItems,
+    totalSales:G.totalSales, totalCustomers:G.totalCustomers,
+    nextEmpId:G.nextEmpId, nextDelId:G.nextDelId,
+    saveSlot:G.saveSlot, savedAt:Date.now()
+  };
+  localStorage.setItem('oldmark_slot_'+G.saveSlot, JSON.stringify(saved));
+  notify('Game saved! ✓','ok');
+}
+
+function loadSlot(slot){
+  const raw=localStorage.getItem('oldmark_slot_'+slot);
+  if(!raw)return null;
+  return JSON.parse(raw);
+}
+
+function applyLoad(data, slot){
+  G=freshState(data.ownerName, data.storeName, slot);
+  Object.assign(G, data);
+  G.customers=[];
+  G.cashierQueue=[];
+  G.cashierRevenue=0;
+}
+
+function getSaveSlots(){
+  return [0,1,2].map(i=>loadSlot(i));
+}
+
+// ═══════════════════════════════════════════════════════
+// INTRO ANIMATION
+// ═══════════════════════════════════════════════════════
+let introOver=false;
+function initIntro(){
+  const canvas=qs('#intro-canvas');
+  const ctx=canvas.getContext('2d');
+  function resize(){canvas.width=innerWidth;canvas.height=innerHeight;}
+  resize();
+  window.addEventListener('resize',resize);
+
+  let t=0, phase=0; // 0=fadein, 1=hold, 2=fadeout
+  const FADEIN=1.5, HOLD=1.8, FADEOUT=1.2;
+  const TOTAL=FADEIN+HOLD+FADEOUT;
+  let start=null;
+
+  // Grain particles
+  const grains=Array.from({length:180},()=>({
+    x:Math.random(),y:Math.random(),r:Math.random()*1.5+.5,a:Math.random()
+  }));
+  // Scratch lines
+  const scratches=Array.from({length:3},()=>({
+    x:Math.random(),len:Math.random()*.3+.05,a:Math.random()*.4+.1,phase:Math.random()*2
+  }));
+
+  function draw(ts){
+    if(!start)start=ts;
+    t=(ts-start)/1000;
+    if(t>TOTAL+.3){if(!introOver)finishIntro();return;}
+
+    let alpha=0;
+    if(t<FADEIN) alpha=t/FADEIN;
+    else if(t<FADEIN+HOLD) alpha=1;
+    else alpha=1-(t-FADEIN-HOLD)/FADEOUT;
+    alpha=Math.max(0,Math.min(1,alpha));
+
+    const W=canvas.width, H=canvas.height;
+    // flicker
+    const flicker=alpha*(0.85+Math.sin(t*47)*0.08+Math.random()*.07);
+
+    ctx.fillStyle='#000';
+    ctx.fillRect(0,0,W,H);
+
+    // vignette
+    const vg=ctx.createRadialGradient(W/2,H/2,H*.1,W/2,H/2,H*.7);
+    vg.addColorStop(0,'transparent');
+    vg.addColorStop(1,'rgba(0,0,0,0.7)');
+    ctx.fillStyle=vg;
+    ctx.fillRect(0,0,W,H);
+
+    // horizontal scan lines
+    ctx.fillStyle=`rgba(0,0,0,${.12*flicker})`;
+    for(let y=0;y<H;y+=4){ctx.fillRect(0,y,W,2);}
+
+    // film scratches
+    for(const s of scratches){
+      if(Math.random()<.06){
+        const sx=s.x*W+(Math.random()-.5)*20;
+        ctx.strokeStyle=`rgba(255,255,255,${s.a*flicker*Math.random()})`;
+        ctx.lineWidth=.5;
+        ctx.beginPath();
+        ctx.moveTo(sx,0);
+        ctx.lineTo(sx+Math.random()*4-2,H*s.len*Math.random()+H*.2);
+        ctx.stroke();
+      }
+    }
+
+    // grain
+    for(const g of grains){
+      ctx.fillStyle=`rgba(255,255,255,${g.a*Math.random()*.3*flicker})`;
+      ctx.fillRect(g.x*W+(Math.random()-0.5)*3,g.y*H+(Math.random()-0.5)*3,g.r,g.r);
+    }
+
+    // text
+    ctx.save();
+    ctx.globalAlpha=flicker;
+    ctx.textAlign='center';
+    ctx.fillStyle='#d4c090';
+    ctx.font=`bold ${Math.round(H*.055)}px Georgia,serif`;
+    ctx.letterSpacing='8px';
+    ctx.fillText('MARK & CO. PRODUCTIONS',W/2,H/2-H*.04);
+    ctx.font=`${Math.round(H*.022)}px Georgia,serif`;
+    ctx.fillStyle='#a08060';
+    ctx.letterSpacing='4px';
+    ctx.fillText('P R E S E N T S',W/2,H/2+H*.03);
+    // sprocket holes
+    ctx.fillStyle='rgba(255,255,255,0.06)';
+    for(let y=20;y<H;y+=60){
+      ctx.fillRect(14,y,18,32);
+      ctx.fillRect(W-32,y,18,32);
+    }
+    ctx.restore();
+
+    requestAnimationFrame(draw);
+  }
+  requestAnimationFrame(draw);
+
+  // click to skip
+  qs('#intro').addEventListener('click',()=>{if(!introOver)finishIntro();});
+}
+
+function finishIntro(){
+  introOver=true;
+  showScreen('menu');
+  initMenu();
+}
+
+// ═══════════════════════════════════════════════════════
+// MENU ANIMATION
+// ═══════════════════════════════════════════════════════
+let menuRunning=false;
+function initMenu(){
+  if(menuRunning)return;
+  menuRunning=true;
+  const canvas=qs('#menu-canvas');
+  const ctx=canvas.getContext('2d');
+  function resize(){canvas.width=innerWidth;canvas.height=innerHeight;}
+  resize();
+  window.addEventListener('resize',resize);
+
+  const icons=['🥫','🍞','🥛','🍎','☕','🧀','🥚','🍌','🧅','🫙','🥜','🍯'];
+  const floaters=Array.from({length:18},()=>({
+    x:Math.random()*100,y:Math.random()*100,
+    vx:(Math.random()-.5)*.4,vy:(Math.random()-.5)*.3,
+    icon:icons[Math.floor(Math.random()*icons.length)],
+    size:Math.random()*22+18,
+    a:Math.random()*.35+.1
+  }));
+
+  function draw(){
+    if(!menuRunning)return;
+    const W=canvas.width,H=canvas.height;
+    ctx.clearRect(0,0,W,H);
+    ctx.font='serif';
+    for(const f of floaters){
+      f.x+=f.vx*.016*60;
+      f.y+=f.vy*.016*60;
+      if(f.x<-5)f.x=105;
+      if(f.x>105)f.x=-5;
+      if(f.y<-5)f.y=105;
+      if(f.y>105)f.y=-5;
+      ctx.save();
+      ctx.globalAlpha=f.a;
+      ctx.font=`${f.size}px serif`;
+      ctx.fillText(f.icon,(f.x/100)*W,(f.y/100)*H);
+      ctx.restore();
+    }
+    requestAnimationFrame(draw);
+  }
+  requestAnimationFrame(draw);
+}
+
+// ═══════════════════════════════════════════════════════
+// GAME LOOP
+// ═══════════════════════════════════════════════════════
+const REAL_S_PER_GAME_MIN = 1/6;  // 1 real sec = 6 game min
+let lastTs=null, rafId=null, isOpen=false, dayEndPending=false;
+let spawnTimer=0, dayReportShown=false;
+
+function gameLoop(ts){
+  rafId=requestAnimationFrame(gameLoop);
+  const dt=lastTs==null?0:Math.min((ts-lastTs)/1000,.1);
+  lastTs=ts;
+  if(G.paused)return;
+
+  const gameDt=dt*(G.speed/REAL_S_PER_GAME_MIN)*REAL_S_PER_GAME_MIN*G.speed*6;
+  // actually: each real second = 6 game minutes at speed 1
+  const gameMinDelta=dt*6*G.speed;
+
+  G.gameMin+=gameMinDelta;
+  const hr=Math.floor(G.gameMin/60)%24;
+
+  // store open 8am-10pm
+  const storeOpen=(hr>=8 && hr<22);
+  if(!isOpen && storeOpen){ isOpen=true; dayReportShown=false; }
+
+  // Day end
+  if(isOpen && !storeOpen && !dayEndPending){
+    dayEndPending=true;
+    endDay();
+  }
+
+  // Spawn customers
+  if(storeOpen){
+    spawnTimer+=gameMinDelta;
+    // spawn rate: every N game minutes (varies by hour & day)
+    const peakFactor=peakRate(hr, G.day);
+    const spawnInterval=Math.max(4, 30/peakFactor);
+    if(spawnTimer>=spawnInterval){
+      spawnTimer=0;
+      spawnCustomer();
+    }
+  }
+
+  // Update customers
+  updateCustomers(dt*G.speed);
+
+  // Draw
+  drawActiveView();
+  updateTopbar();
+}
+
+function peakRate(hr, day){
+  // 0-1 scale, day multiplier
+  const dayMult=Math.min(1+day*.1, 3);
+  if(hr>=11&&hr<=13)return 2.5*dayMult;
+  if(hr>=17&&hr<=19)return 2*dayMult;
+  if(hr>=9&&hr<11||hr>=14&&hr<17)return 1.2*dayMult;
+  if(hr>=8&&hr<9||hr>=19&&hr<22)return 0.6*dayMult;
+  return 0.3*dayMult;
+}
+
+function endDay(){
+  // Pay wages
+  let wages=0;
+  G.employees.forEach(e=>{wages+=e.wage;});
+  G.money-=wages;
+  if(wages>0)notify(`Paid $${wages.toFixed(0)} in wages.`,'');
+
+  // Process deliveries
+  G.deliveries.forEach(d=>{
+    if(!d.arrived){
+      d.arrived=true;
+      d.items.forEach(item=>{
+        G.stock[item.id]=(G.stock[item.id]||0)+item.qty;
+      });
+      notify(`📦 Delivery arrived! Check your stock.`,'ok');
+    }
+  });
+  G.deliveries=G.deliveries.filter(d=>d.arrived && !d.accepted);
+
+  // Stocker employees: auto-restock
+  const stockers=G.employees.filter(e=>e.type==='stocker');
+  if(stockers.length>0){
+    G.shelves.forEach(sh=>{
+      if(!sh.product)return;
+      const need=sh.maxStock-sh.stock;
+      const avail=G.stock[sh.product]||0;
+      const qty=Math.min(need,avail,8*stockers.length);
+      sh.stock+=qty;
+      G.stock[sh.product]=(G.stock[sh.product]||0)-qty;
+    });
+    if(stockers.length)notify('🧑‍🔧 Staff restocked shelves overnight.','');
+  }
+
+  // Update stats
+  G.totalSales+=G.todaySales;
+  G.totalCustomers+=G.todayCustomers;
+
+  notify(`📅 Day ${G.day} ended. Revenue: ${fmt$(G.todaySales)} | Customers: ${G.todayCustomers}`,'ok');
+
+  G.day++;
+  G.gameMin=8*60;
+  G.todaySales=0; G.todayCustomers=0; G.todayItems=0;
+  G.cashierRevenue=0;
+  G.customers=[];
+  G.cashierQueue=[];
+  isOpen=false;
+  dayEndPending=false;
+
+  saveGame();
+}
+
+// ═══════════════════════════════════════════════════════
+// CUSTOMER AI
+// ═══════════════════════════════════════════════════════
+let nextCustId=1;
+function spawnCustomer(){
+  const avail=PRODUCTS.filter(p=>G.licenses[p.cat]||p.cat==='general');
+  if(avail.length===0)return;
+
+  // Build shopping list
+  const list=[];
+  avail.forEach(p=>{
+    if(Math.random()<p.demand*0.25)list.push(p.id);
+  });
+  if(list.length===0)list.push(avail[Math.floor(Math.random()*avail.length)].id);
+
+  const W=storeCanvas.width, H=storeCanvas.height;
+  const entX=W/2+storeOffset().ox, entY=H-storeOffset().oy-10;
+
+  const c={
+    id:nextCustId++,
+    name:CUST_NAMES[Math.floor(Math.random()*CUST_NAMES.length)],
+    x:W/2, y:H-10,
+    tx:W/2, ty:H-10,
+    state:'entering',
+    shoppingList:[...list],
+    currentListIdx:0,
+    cart:[],
+    budget:5+Math.random()*30,
+    color:CUST_COLORS[Math.floor(Math.random()*CUST_COLORS.length)],
+    speed:35+Math.random()*15,
+    waitTimer:0,
+    waitDuration:0,
+    happiness:1,
+  };
+  // walk into store
+  c.tx=storeOffset().ox + (2+Math.random()*(G.gridW-4))*CELL;
+  c.ty=storeOffset().oy + (G.gridH-2)*CELL;
+  G.customers.push(c);
+  G.todayCustomers++;
+}
+
+const CELL=54;
+const storeCanvas=qs('#store-canvas');
+const storeCTX=storeCanvas.getContext('2d');
+const cashCanvas=qs('#cashier-canvas');
+const cashCTX=cashCanvas.getContext('2d');
+
+function storeOffset(){
+  const cw=storeCanvas.width, ch=storeCanvas.height;
+  const sw=G.gridW*CELL, sh=G.gridH*CELL;
+  return {
+    ox:Math.max(20,Math.floor((cw-sw)/2)),
+    oy:Math.max(10,Math.floor((ch-sh)/2))
+  };
+}
+
+function updateCustomers(dt){
+  G.customers=G.customers.filter(c=>{
+    switch(c.state){
+      case 'entering':
+        moveToward(c,dt);
+        if(arrived(c)){
+          c.state='shopping';
+          setShoppingTarget(c);
+        }
+        break;
+      case 'shopping':
+        moveToward(c,dt);
+        if(arrived(c)){
+          // wait at shelf
+          c.waitTimer+=dt;
+          if(c.waitTimer>=(c.waitDuration||1.5)){
+            c.waitTimer=0;
+            // Try to buy
+            buyFromCurrentShelf(c);
+            c.currentListIdx++;
+            if(c.currentListIdx>=c.shoppingList.length || c.budget<0.5){
+              c.state='queueing';
+              setCheckoutTarget(c);
+            } else {
+              setShoppingTarget(c);
+            }
+          }
+        }
+        break;
+      case 'queueing':
+        moveToward(c,dt);
+        if(arrived(c)){
+          c.state='checking_out';
+          c.waitTimer=0;
+          c.waitDuration=1.0+Math.random()*1.0;
+          checkout(c);
+        }
+        break;
+      case 'checking_out':
+        c.waitTimer+=dt;
+        if(c.waitTimer>=c.waitDuration){
+          c.state='leaving';
+          const {ox,oy}=storeOffset();
+          c.tx=ox+G.gridW*CELL/2;
+          c.ty=storeCanvas.height+30;
+        }
+        break;
+      case 'leaving':
+        moveToward(c,dt);
+        if(c.y>storeCanvas.height+20)return false; // remove
+        break;
+    }
+    return true;
+  });
+}
+
+function moveToward(c,dt){
+  const dx=c.tx-c.x, dy=c.ty-c.y;
+  const dist=Math.sqrt(dx*dx+dy*dy);
+  if(dist<2){c.x=c.tx;c.y=c.ty;return;}
+  const spd=c.speed*dt;
+  c.x+=dx/dist*Math.min(spd,dist);
+  c.y+=dy/dist*Math.min(spd,dist);
+}
+
+function arrived(c){
+  return Math.abs(c.x-c.tx)<3 && Math.abs(c.y-c.ty)<3;
+}
+
+function setShoppingTarget(c){
+  const pid=c.shoppingList[c.currentListIdx];
+  // find shelf with this product and stock
+  const sh=G.shelves.find(s=>s.product===pid&&s.stock>0);
+  const {ox,oy}=storeOffset();
+  if(sh){
+    c.tx=ox+(sh.gx+sh.gw/2)*CELL;
+    c.ty=oy+(sh.gy+sh.gh/2)*CELL;
+    c.targetShelf=sh.id;
+  } else {
+    // no shelf, skip
+    c.currentListIdx++;
+    if(c.currentListIdx>=c.shoppingList.length){
+      c.state='queueing';
+      setCheckoutTarget(c);
+    } else {
+      setShoppingTarget(c);
+    }
+    return;
+  }
+  c.waitDuration=1.2+Math.random()*.8;
+}
+
+function setCheckoutTarget(c){
+  const {ox,oy}=storeOffset();
+  c.tx=ox+(2+Math.floor(Math.random()*(G.gridW-4)))*CELL;
+  c.ty=oy+(G.gridH-1)*CELL-8;
+}
+
+function buyFromCurrentShelf(c){
+  const pid=c.shoppingList[c.currentListIdx];
+  const sh=G.shelves.find(s=>s.id===c.targetShelf && s.product===pid && s.stock>0);
+  if(!sh)return;
+  const p=PROD_MAP[pid];
+  if(!p)return;
+  const price=sh.price||p.price;
+  // price check: customer won't buy if > 2.5x base cost
+  if(price>p.cost*2.5+0.5){c.happiness=Math.max(0,c.happiness-.2);return;}
+  if(c.budget<price)return;
+  sh.stock--;
+  c.budget-=price;
+  c.cart.push({pid,price});
+  G.todaySales+=price;
+  G.todayItems++;
+  // show money popup
+  showMoneyPop('+'+fmt$(price), sh);
+}
+
+function checkout(c){
+  // already bought during shopping, just show total
+  const total=c.cart.reduce((s,i)=>s+i.price,0);
+  G.cashierRevenue=(G.cashierRevenue||0)+total;
+  if(c.cart.length>0) showCashierPop('+'+fmt$(total));
+}
+
+function showMoneyPop(text, shelf){
+  const {ox,oy}=storeOffset();
+  const el=document.createElement('div');
+  el.className='mopop';
+  el.textContent=text;
+  el.style.left=(ox+(shelf.gx+shelf.gw/2)*CELL-10)+'px';
+  el.style.top=(oy+shelf.gy*CELL)+'px';
+  qs('#mainview').appendChild(el);
+  setTimeout(()=>el.remove(),1500);
+}
+
+function showCashierPop(text){
+  const el=document.createElement('div');
+  el.className='mopop';
+  el.textContent=text;
+  el.style.left='50%';
+  el.style.top='40%';
+  el.style.transform='translateX(-50%)';
+  qs('#mainview').appendChild(el);
+  setTimeout(()=>el.remove(),1500);
+}
+
+// ═══════════════════════════════════════════════════════
+// STORE CANVAS RENDERING
+// ═══════════════════════════════════════════════════════
+let currentView='store', currentPanel=null;
+let animFrame=0;
+
+function resizeCanvases(){
+  const mv=qs('#mainview');
+  const w=mv.clientWidth, h=mv.clientHeight;
+  storeCanvas.width=w; storeCanvas.height=h;
+  cashCanvas.width=w; cashCanvas.height=h;
+}
+
+function drawActiveView(){
+  animFrame++;
+  if(currentPanel) return;
+  if(currentView==='store') drawStore();
+  else drawCashier();
+}
+
+function drawStore(){
+  const ctx=storeCTX;
+  const cw=storeCanvas.width, ch=storeCanvas.height;
+  ctx.clearRect(0,0,cw,ch);
+
+  // dark bg
+  ctx.fillStyle='#140a00';
+  ctx.fillRect(0,0,cw,ch);
+
+  const {ox,oy}=storeOffset();
+  const sw=G.gridW*CELL, sh=G.gridH*CELL;
+
+  // floor tiles
+  const tileSize=CELL;
+  for(let c=0;c<G.gridW;c++){
+    for(let r=0;r<G.gridH;r++){
+      const isEdge=(c===0||c===G.gridW-1||r===0);
+      ctx.fillStyle=isEdge?'#2a1400':'#c8a878';
+      ctx.fillRect(ox+c*tileSize,oy+r*tileSize,tileSize,tileSize);
+      if(!isEdge){
+        ctx.strokeStyle='#b8987055';
+        ctx.lineWidth=.5;
+        ctx.strokeRect(ox+c*tileSize,oy+r*tileSize,tileSize,tileSize);
+      }
+    }
+  }
+
+  // south wall with door gap
+  const doorL=Math.floor(G.gridW/2)-1, doorR=doorL+2;
+  for(let c=0;c<G.gridW;c++){
+    const isDoor=(c>=doorL&&c<doorR);
+    ctx.fillStyle=isDoor?'#8a6840':'#2a1400';
+    ctx.fillRect(ox+c*CELL,oy+G.gridH*CELL-CELL,CELL,CELL);
+    if(isDoor){
+      // doormat
+      ctx.fillStyle='#5c3317';
+      ctx.fillRect(ox+c*CELL+4,oy+G.gridH*CELL-CELL+CELL-12,CELL-8,10);
+      ctx.fillStyle='#c8a050';
+      ctx.font='8px Georgia';
+      ctx.textAlign='center';
+      ctx.fillText('WELCOME',ox+c*CELL+CELL/2,oy+G.gridH*CELL-6);
+    }
+  }
+
+  // checkout counter (bottom inside, above door row)
+  const counterY=oy+(G.gridH-2)*CELL;
+  ctx.fillStyle='#3d2010';
+  ctx.fillRect(ox+CELL,counterY,sw-CELL*2,CELL*.6);
+  ctx.fillStyle='#5c3822';
+  ctx.fillRect(ox+CELL,counterY,sw-CELL*2,8);
+  ctx.fillStyle='#c8a050';
+  ctx.font='bold 11px Georgia';
+  ctx.textAlign='center';
+  ctx.fillText('CHECKOUT',ox+sw/2,counterY+22);
+  // register icon
+  ctx.font='18px serif';
+  ctx.fillText('🛒',ox+sw/2-28,counterY+28);
+  ctx.fillText('🧾',ox+sw/2+10,counterY+28);
+
+  // shelves
+  for(const sh of G.shelves){
+    drawShelf(ctx,ox,oy,sh);
+  }
+
+  // customers
+  for(const c of G.customers){
+    drawCustomer(ctx,c);
+  }
+
+  // store outline
+  ctx.strokeStyle='#5c3317';
+  ctx.lineWidth=2;
+  ctx.strokeRect(ox,oy,sw,sh);
+
+  // store name banner at top
+  ctx.fillStyle='#2a1400dd';
+  ctx.fillRect(ox,oy,sw,28);
+  ctx.fillStyle='#c8860a';
+  ctx.font='bold 14px Georgia';
+  ctx.textAlign='center';
+  ctx.fillText(G.storeName, ox+sw/2, oy+18);
+
+  // legend
+  ctx.font='11px Georgia';
+  ctx.fillStyle='#8a7050';
+  ctx.textAlign='left';
+  ctx.fillText('Click a shelf to manage it', ox+4, oy+sh+16);
+}
+
+function drawShelf(ctx,ox,oy,sh){
+  const x=ox+sh.gx*CELL, y=oy+sh.gy*CELL;
+  const w=sh.gw*CELL, h=sh.gh*CELL;
+
+  // shelf body
+  ctx.fillStyle='#3d2010';
+  ctx.fillRect(x,y,w,h);
+
+  // top edge highlight
+  ctx.fillStyle='#6a4020';
+  ctx.fillRect(x,y,w,5);
+  ctx.fillStyle='#5c3017';
+  ctx.fillRect(x,y+h-4,w,4);
+
+  // product color bar
+  if(sh.product){
+    const p=PROD_MAP[sh.product];
+    ctx.fillStyle=p?p.color:'#555555';
+    ctx.fillRect(x+4,y+5,w-8,h-12);
+    // stock fill (darken unfilled portion)
+    const fillRatio=sh.maxStock>0?sh.stock/sh.maxStock:0;
+    if(fillRatio<1){
+      ctx.fillStyle='rgba(0,0,0,0.5)';
+      ctx.fillRect(x+4,y+5,(w-8)*(1-fillRatio),h-12);
+    }
+    // product name
+    ctx.fillStyle='#fff';
+    ctx.font=`bold ${Math.min(11,Math.floor(w/p.name.length*1.4))}px Georgia`;
+    ctx.textAlign='center';
+    ctx.fillText(p.name, x+w/2, y+h/2+1);
+    // price
+    if(sh.price>0){
+      ctx.fillStyle='#f0e060';
+      ctx.font='10px Georgia';
+      ctx.fillText(fmt$(sh.price), x+w/2, y+h-6);
+    }
+    // empty indicator
+    if(sh.stock===0){
+      ctx.fillStyle='rgba(200,70,70,0.8)';
+      ctx.fillRect(x+4,y+5,w-8,h-12);
+      ctx.fillStyle='#fff';
+      ctx.font='bold 11px Georgia';
+      ctx.fillText('EMPTY',x+w/2,y+h/2+4);
+    }
+  }
+
+  // shelf label (name)
+  ctx.fillStyle='rgba(0,0,0,0.5)';
+  ctx.fillRect(x,y,w,14);
+  ctx.fillStyle='#c8a878';
+  ctx.font='9px Georgia';
+  ctx.textAlign='center';
+  ctx.fillText(sh.name, x+w/2, y+10);
+
+  // shelf border
+  ctx.strokeStyle='#6a4020';
+  ctx.lineWidth=1.5;
+  ctx.strokeRect(x,y,w,h);
+}
+
+function drawCustomer(ctx,c){
+  const r=9;
+  // body
+  ctx.beginPath();
+  ctx.arc(c.x,c.y,r,0,Math.PI*2);
+  ctx.fillStyle=c.color;
+  ctx.fill();
+  ctx.strokeStyle='rgba(0,0,0,0.4)';
+  ctx.lineWidth=1.5;
+  ctx.stroke();
+  // head bob
+  const bob=Math.sin(animFrame*0.15)*1.5;
+  // hat
+  ctx.fillStyle='#1a0d00';
+  ctx.fillRect(c.x-5,c.y-r-4+bob,10,5);
+  ctx.fillRect(c.x-7,c.y-r-1+bob,14,2);
+  // cart indicator (if has items)
+  if(c.cart.length>0){
+    ctx.font='10px serif';
+    ctx.textAlign='center';
+    ctx.fillText('🛒',c.x+8,c.y-6);
+  }
+  // happy/sad indicator
+  if(c.happiness<0.5){
+    ctx.font='8px serif';
+    ctx.fillText('😟',c.x-10,c.y-10);
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// CASHIER VIEW RENDERING
+// ═══════════════════════════════════════════════════════
+function drawCashier(){
+  const ctx=cashCTX;
+  const W=cashCanvas.width, H=cashCanvas.height;
+  ctx.clearRect(0,0,W,H);
+
+  // floor
+  ctx.fillStyle='#c8a878';
+  ctx.fillRect(0,H*.55,W,H*.45);
+  // tile lines
+  ctx.strokeStyle='#b89868';
+  ctx.lineWidth=.5;
+  for(let x=0;x<W;x+=50){ctx.beginPath();ctx.moveTo(x,H*.55);ctx.lineTo(x,H);ctx.stroke();}
+  for(let y=H*.55;y<H;y+=50){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+
+  // wall
+  ctx.fillStyle='#d4b880';
+  ctx.fillRect(0,0,W,H*.55);
+  // wallpaper stripes
+  ctx.strokeStyle='#c8a870';
+  ctx.lineWidth=2;
+  for(let y=20;y<H*.55;y+=30){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+
+  // counter
+  const cY=H*.5, cH=H*.08;
+  ctx.fillStyle='#3d2010';
+  ctx.fillRect(W*.1,cY,W*.8,cH+10);
+  ctx.fillStyle='#6a4020';
+  ctx.fillRect(W*.1,cY,W*.8,8);
+  ctx.fillStyle='#8b5e3c';
+  ctx.fillRect(W*.1,cY+8,W*.8,4);
+
+  // register
+  const rX=W*.45, rY=cY-50;
+  ctx.fillStyle='#1a1a1a';
+  ctx.fillRect(rX,rY,W*.12,50);
+  ctx.fillStyle='#333';
+  ctx.fillRect(rX+4,rY+4,W*.12-8,30);
+  ctx.fillStyle='#00cc44';
+  ctx.font='bold 12px monospace';
+  ctx.textAlign='center';
+  ctx.fillText(fmt$(G.cashierRevenue||0), rX+W*.06, rY+22);
+  // display
+  ctx.fillStyle='#c8a050';
+  ctx.font='10px Georgia';
+  ctx.fillText('TODAY\'S REVENUE',rX+W*.06,rY+40);
+
+  // sign
+  ctx.fillStyle='#5c3317';
+  ctx.fillRect(W*.42,H*.1,W*.18,H*.12);
+  ctx.fillStyle='#c8860a';
+  ctx.font='bold 14px Georgia';
+  ctx.fillText('CHECKOUT',W*.51,H*.165);
+  ctx.font='10px Georgia';
+  ctx.fillStyle='#d4c090';
+  ctx.fillText('Thank you for shopping!',W*.51,H*.2);
+
+  // customers in queue
+  const queueX=W*.28;
+  const customers_here=G.customers.filter(c=>c.state==='queueing'||c.state==='checking_out');
+  customers_here.forEach((c,i)=>{
+    const cx=queueX-i*38, cy=H*.42;
+    const r=11;
+    ctx.beginPath();
+    ctx.arc(cx,cy,r,0,Math.PI*2);
+    ctx.fillStyle=c.color;
+    ctx.fill();
+    ctx.strokeStyle='rgba(0,0,0,0.3)';
+    ctx.lineWidth=1.5;
+    ctx.stroke();
+    // hat
+    ctx.fillStyle='#1a0d00';
+    ctx.fillRect(cx-5,cy-r-3,10,4);
+    ctx.fillRect(cx-7,cy-r,14,2);
+    if(c.cart.length>0){
+      ctx.font='10px serif';
+      ctx.fillText('🛒',cx+10,cy-8);
+    }
+  });
+
+  // waiting customers count
+  ctx.fillStyle='rgba(0,0,0,0.5)';
+  ctx.fillRect(10,10,200,36);
+  ctx.fillStyle='var(--cream)';
+  ctx.font='13px Georgia';
+  ctx.textAlign='left';
+  ctx.fillText(`In queue: ${customers_here.length}  |  In store: ${G.customers.length}`, 18,33);
+
+  // today's cashier total
+  ctx.fillStyle='rgba(0,0,0,0.5)';
+  ctx.fillRect(W-180,10,170,36);
+  ctx.fillStyle='#7fc47f';
+  ctx.font='bold 14px Georgia';
+  ctx.textAlign='right';
+  ctx.fillText('Revenue: '+fmt$(G.todaySales), W-14, 33);
+}
+
+// ═══════════════════════════════════════════════════════
+// TOP BAR UPDATE
+// ═══════════════════════════════════════════════════════
+function updateTopbar(){
+  qs('#mval').textContent=fmt$(G.money);
+  qs('#dayval').textContent='Day '+G.day;
+  qs('#timeval').textContent=fmtTime(Math.floor(G.gameMin));
+  qs('#store-title').textContent=G.storeName;
+  qs('#ds-sales').textContent=fmt$(G.todaySales);
+  qs('#ds-custs').textContent=G.todayCustomers;
+  qs('#ds-items').textContent=G.todayItems;
+  qs('#ds-total').textContent=fmt$(G.totalSales+G.todaySales);
+}
+
+// ═══════════════════════════════════════════════════════
+// PANEL RENDERING
+// ═══════════════════════════════════════════════════════
+function renderShipmentsPanel(){
+  // Stock room
+  const keys=Object.keys(G.stock).filter(k=>G.stock[k]>0);
+  const srEl=qs('#stockroom-info');
+  if(keys.length===0){
+    srEl.innerHTML='<span style="font-size:13px;color:#8a7050;">Stock room is empty. Place an order below.</span>';
+  } else {
+    srEl.innerHTML='<div style="font-size:11px;color:#8a7050;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Stock Room</div>'+
+      keys.map(k=>{
+        const p=PROD_MAP[k];
+        return `<div style="display:flex;gap:8px;align-items:center;margin-bottom:4px;">
+          <div style="width:10px;height:10px;background:${p?p.color:'#555'};flex-shrink:0;"></div>
+          <span style="flex:1;font-size:12px;">${p?p.name:k}</span>
+          <span style="font-size:12px;color:var(--amber);">${G.stock[k]} units</span>
+        </div>`;
+      }).join('');
+  }
+
+  // Order list
+  const avail=PRODUCTS.filter(p=>G.licenses[p.cat]||p.cat==='general');
+  if(!G.orderQty) G.orderQty={};
+  const olEl=qs('#order-list');
+  olEl.innerHTML=avail.map(p=>{
+    const q=G.orderQty[p.id]||0;
+    return `<div class="prow">
+      <div class="pclr" style="background:${p.color};"></div>
+      <div class="pinfo"><div class="pname">${p.name}</div><div class="pcat">${p.cat}</div></div>
+      <div class="qctrl">
+        <button class="qbtn" data-pid="${p.id}" data-dir="-1">−</button>
+        <span class="qval" id="qv-${p.id}">${q}</span>
+        <button class="qbtn" data-pid="${p.id}" data-dir="1">+</button>
+      </div>
+      <div class="ocost" id="oc-${p.id}">${q>0?fmt$(q*p.cost):''}</div>
+    </div>`;
+  }).join('');
+
+  // Attach qty events
+  olEl.querySelectorAll('.qbtn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const pid=btn.dataset.pid, dir=+btn.dataset.dir;
+      G.orderQty[pid]=Math.max(0,(G.orderQty[pid]||0)+dir*5);
+      qs('#qv-'+pid).textContent=G.orderQty[pid];
+      const p=PROD_MAP[pid];
+      qs('#oc-'+pid).textContent=G.orderQty[pid]>0?fmt$(G.orderQty[pid]*p.cost):'';
+      updateOrderTotal();
+    });
+  });
+
+  updateOrderTotal();
+
+  // Deliveries
+  const dlEl=qs('#deliveries-list');
+  if(G.deliveries.length===0){
+    dlEl.innerHTML='<div style="font-size:13px;color:#8a7050;padding:8px;">No pending deliveries.</div>';
+  } else {
+    dlEl.innerHTML=G.deliveries.map(d=>`
+      <div class="dlvrow">
+        <div style="flex:1;">
+          <div style="font-size:13px;margin-bottom:3px;">${d.items.map(i=>PROD_MAP[i.id]?PROD_MAP[i.id].name:i.id).join(', ')}</div>
+          <div style="font-size:11px;color:#8a7050;">Day ${d.dayOrdered} order · Total: ${fmt$(d.cost)}</div>
+        </div>
+        <div class="dlvst ${d.arrived?'arr':'pend'}">${d.arrived?'Arrived':'In Transit'}</div>
+        ${d.arrived?`<button class="pcbtn" style="width:auto;padding:4px 10px;" onclick="acceptDelivery(${d.id})">Accept</button>`:''}
+      </div>`).join('');
+  }
+}
+
+function updateOrderTotal(){
+  const total=PRODUCTS.reduce((s,p)=>s+(G.orderQty[p.id]||0)*p.cost,0);
+  qs('#order-total').textContent=fmt$(total);
+}
+
+window.acceptDelivery=function(id){
+  const d=G.deliveries.find(d=>d.id===id);
+  if(!d||!d.arrived)return;
+  d.items.forEach(item=>{G.stock[item.id]=(G.stock[item.id]||0)+item.qty;});
+  d.accepted=true;
+  G.deliveries=G.deliveries.filter(d=>!d.accepted);
+  notify('Delivery accepted! Stock added to room.','ok');
+  renderShipmentsPanel();
+};
+
+function renderEmployeesPanel(){
+  // Hire grid
+  const hg=qs('#hire-grid');
+  hg.innerHTML=EMP_TYPES.map(t=>`
+    <div class="pcard">
+      <div style="font-size:28px;margin-bottom:6px;">${t.emoji}</div>
+      <div class="pcname">${t.name}</div>
+      <div class="pcdesc">${t.desc}</div>
+      <div class="pccost">$${t.wage}/day wage</div>
+      <button class="pcbtn" onclick="openHireModal('${t.id}')">Hire</button>
+    </div>`).join('');
+
+  // Staff list
+  qs('#staff-count').textContent=G.employees.length;
+  const sl=qs('#staff-list');
+  if(G.employees.length===0){
+    sl.innerHTML='<div style="font-size:13px;color:#8a7050;padding:8px;">No staff hired yet.</div>';
+  } else {
+    sl.innerHTML=G.employees.map(e=>`
+      <div class="empcard">
+        <div class="empav">${e.emoji}</div>
+        <div class="empi">
+          <div class="empn">${e.name}</div>
+          <div class="empr">${EMP_TYPES.find(t=>t.id===e.type)?.name||e.type}</div>
+          <div class="empw">-$${e.wage}/day</div>
+        </div>
+        <button class="pcbtn" style="width:auto;padding:4px 12px;border-color:var(--red);color:var(--red);"
+          onclick="fireEmployee(${e.id})">Fire</button>
+      </div>`).join('');
+  }
+}
+
+let pendingHireType=null;
+window.openHireModal=function(typeId){
+  pendingHireType=typeId;
+  const t=EMP_TYPES.find(x=>x.id===typeId);
+  qs('#hire-modal-title').textContent='Hire '+t.name;
+  qs('#hire-modal-desc').textContent=`${t.desc}\n\nDaily wage: $${t.wage}. You currently have $${G.money.toFixed(2)}.`;
+  openModal('mo-hire');
+};
+
+window.fireEmployee=function(id){
+  G.employees=G.employees.filter(e=>e.id!==id);
+  notify('Employee dismissed.','');
+  renderEmployeesPanel();
+};
+
+function renderLicensesPanel(){
+  const el=qs('#lic-list');
+  // General always owned
+  const rows=[
+    `<div class="liccard own">
+      <div class="licico">🛒</div>
+      <div class="licinfo">
+        <div class="licname">General Grocery License</div>
+        <div class="licdesc">Allows sale of packaged grocery items — soups, rice, pasta, coffee, cereal and more.</div>
+        <span class="badge-own">Owned</span>
+      </div>
+    </div>`
+  ];
+  LICENSES_DEF.forEach(lic=>{
+    const owned=G.licenses[lic.id];
+    const reqMet=!lic.req||G.licenses[lic.req];
+    const canAfford=G.money>=lic.cost;
+    rows.push(`<div class="liccard ${owned?'own':''}">
+      <div class="licico">${lic.emoji}</div>
+      <div class="licinfo">
+        <div class="licname">${lic.name}</div>
+        <div class="licdesc">${lic.desc}</div>
+        ${lic.req&&!G.licenses[lic.req]?`<span class="badge-need">Requires ${LICENSES_DEF.find(l=>l.id===lic.req)?.name||lic.req}</span>`:''}
+        ${owned
+          ?'<span class="badge-own">Owned</span>'
+          :`<div style="margin-top:8px;display:flex;align-items:center;gap:12px;">
+              <span style="font-size:14px;color:var(--green);">${fmt$(lic.cost)}</span>
+              <button class="pcbtn" style="width:auto;padding:5px 16px;"
+                ${(!reqMet||!canAfford)?'disabled':''} onclick="buyLicense('${lic.id}')">Purchase</button>
+            </div>`
+        }
+      </div>
+    </div>`);
+  });
+  el.innerHTML=rows.join('');
+}
+
+window.buyLicense=function(id){
+  const lic=LICENSES_DEF.find(l=>l.id===id);
+  if(!lic)return;
+  if(G.money<lic.cost){notify('Not enough money!','err');return;}
+  if(lic.req&&!G.licenses[lic.req]){notify('Missing prerequisite license!','err');return;}
+  G.money-=lic.cost;
+  G.licenses[id]=true;
+  notify(`📜 ${lic.name} purchased! You can now stock ${id} products.`,'ok');
+  renderLicensesPanel();
+  renderShipmentsPanel();
+};
+
+function renderExpansionPanel(){
+  // Preview canvas
+  const ec=qs('#exp-preview');
+  ec.width=qs('#panel-expansion').clientWidth-52||400;
+  const ectx=ec.getContext('2d');
+  const pw=ec.width, ph=ec.height;
+  ectx.fillStyle='#0d0700';
+  ectx.fillRect(0,0,pw,ph);
+  const scale=Math.min(pw/(G.gridW*12),ph/(G.gridH*12));
+  const cw=G.gridW*12*scale, ch=G.gridH*12*scale;
+  const eox=(pw-cw)/2, eoy=(ph-ch)/2;
+  ectx.fillStyle='#c8a878';
+  ectx.fillRect(eox,eoy,cw,ch);
+  ectx.strokeStyle='#b89868';
+  ectx.lineWidth=.3;
+  for(let c=0;c<G.gridW;c++) for(let r=0;r<G.gridH;r++){
+    ectx.strokeRect(eox+c*12*scale,eoy+r*12*scale,12*scale,12*scale);
+  }
+  G.shelves.forEach(sh=>{
+    const p=sh.product?PROD_MAP[sh.product]:null;
+    ectx.fillStyle=p?p.color:'#3d2010';
+    ectx.fillRect(eox+sh.gx*12*scale,eoy+sh.gy*12*scale,sh.gw*12*scale,sh.gh*12*scale);
+  });
+  ectx.fillStyle='#2a1400';
+  ectx.fillRect(eox,eoy+G.gridH*12*scale-12*scale,cw,12*scale);
+  ectx.strokeStyle='#c8860a';
+  ectx.lineWidth=1.5;
+  ectx.strokeRect(eox,eoy,cw,ch);
+  ectx.fillStyle='#c8a050';
+  ectx.font='bold 9px Georgia';
+  ectx.textAlign='center';
+  ectx.fillText('Store Layout Preview',pw/2,ph-4);
+
+  // Expansion cards
+  const el=qs('#exp-list');
+  el.innerHTML=EXPANSIONS_DEF.map(ex=>{
+    const owned=G.expansions.includes(ex.id);
+    const canAfford=G.money>=ex.cost;
+    return `<div class="expcard">
+      <div class="expprev">${ex.emoji}</div>
+      <div class="expinfo">
+        <div class="expname">${ex.name}</div>
+        <div class="expdesc">${ex.desc}</div>
+        <div style="display:flex;align-items:center;gap:12px;margin-top:8px;">
+          <span style="font-size:12px;color:#8a7050;">+${ex.shelves} shelves</span>
+          <span style="font-size:14px;color:var(--green);">${fmt$(ex.cost)}</span>
+          ${owned
+            ?'<span class="badge-own">Installed</span>'
+            :`<button class="pcbtn" style="width:auto;padding:5px 16px;"
+                ${!canAfford?'disabled':''} onclick="buyExpansion('${ex.id}')">Buy Expansion</button>`
+          }
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+window.buyExpansion=function(id){
+  const ex=EXPANSIONS_DEF.find(e=>e.id===id);
+  if(!ex)return;
+  if(G.money<ex.cost){notify('Not enough money!','err');return;}
+  if(G.expansions.includes(id)){notify('Already installed!','err');return;}
+  G.money-=ex.cost;
+  G.expansions.push(id);
+  // Add shelves
+  const baseId=G.shelves.length+1;
+  addExpansionShelves(ex, baseId);
+  notify(`🏗️ ${ex.name} installed! ${ex.shelves} new shelf positions added.`,'ok');
+  renderExpansionPanel();
+};
+
+function addExpansionShelves(ex, startId){
+  if(ex.id==='ext1'){
+    G.gridH+=3;
+    for(let i=0;i<4;i++){
+      G.shelves.push({id:startId+i,name:`Shelf ${String.fromCharCode(65+G.shelves.length)}`,
+        gx:1+Math.floor(i/2)*6,gy:G.gridH-4+(i%2)*2,gw:4,gh:1,product:null,price:0,stock:0,maxStock:20});
+    }
+  } else if(ex.id==='ext2'){
+    G.gridW+=4;
+    for(let i=0;i<6;i++){
+      G.shelves.push({id:startId+i,name:`Shelf ${String.fromCharCode(65+G.shelves.length)}`,
+        gx:G.gridW-5,gy:1+(i*2)%(G.gridH-4),gw:3,gh:1,product:null,price:0,stock:0,maxStock:20});
+    }
+  } else if(ex.id==='ext3'){
+    G.gridW+=4; G.gridH+=3;
+    for(let i=0;i<10;i++){
+      G.shelves.push({id:startId+i,name:`Shelf ${String.fromCharCode(65+G.shelves.length%26)}`,
+        gx:1+Math.floor(i/2)*5,gy:G.gridH-5+(i%2)*2,gw:3,gh:1,product:null,price:0,stock:0,maxStock:20});
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// SHELF MODAL
+// ═══════════════════════════════════════════════════════
+let activeShelfId=null;
+function openShelfModal(shelfId){
+  activeShelfId=shelfId;
+  const sh=G.shelves.find(s=>s.id===shelfId);
+  if(!sh)return;
+  qs('#shelf-modal-title').textContent=`Manage — ${sh.name}`;
+  qs('#shelf-lbl').value=sh.name;
+  qs('#shelf-price').value=sh.price>0?sh.price.toFixed(2):'';
+
+  // Populate product dropdown
+  const avail=PRODUCTS.filter(p=>G.licenses[p.cat]||p.cat==='general');
+  const sel=qs('#shelf-prod');
+  sel.innerHTML='<option value="">— Empty Shelf —</option>'+
+    avail.map(p=>`<option value="${p.id}" ${sh.product===p.id?'selected':''}>${p.name} (${p.cat}) — Cost: ${fmt$(p.cost)}</option>`).join('');
+
+  updateShelfStockInfo(sh);
+  openModal('mo-shelf');
+}
+
+function updateShelfStockInfo(sh){
+  const pct=sh.maxStock>0?(sh.stock/sh.maxStock)*100:0;
+  qs('#sm-onshelf').textContent=`${sh.stock} / ${sh.maxStock}`;
+  const bar=qs('#sm-bar');
+  bar.style.width=pct+'%';
+  bar.className='stfill '+(pct<25?'lo':pct<60?'md':'');
+  const pid=qs('#shelf-prod').value||sh.product;
+  qs('#sm-stroom').textContent=(G.stock[pid]||0)+' units';
+}
+
+qs('#btn-restock').addEventListener('click',()=>{
+  const sh=G.shelves.find(s=>s.id===activeShelfId);
+  if(!sh)return;
+  const pid=qs('#shelf-prod').value||sh.product;
+  if(!pid){notify('Select a product first','err');return;}
+  const avail=G.stock[pid]||0;
+  const need=sh.maxStock-sh.stock;
+  if(avail===0){notify('No stock in stockroom for this product.','err');return;}
+  const qty=Math.min(need,avail);
+  sh.stock+=qty;
+  G.stock[pid]-=qty;
+  if(G.stock[pid]<=0)delete G.stock[pid];
+  notify(`Restocked ${qty} units onto shelf.`,'ok');
+  updateShelfStockInfo(sh);
+});
+
+qs('#btn-saveshelf').addEventListener('click',()=>{
+  const sh=G.shelves.find(s=>s.id===activeShelfId);
+  if(!sh)return;
+  sh.name=qs('#shelf-lbl').value.trim()||sh.name;
+  sh.product=qs('#shelf-prod').value||null;
+  const price=parseFloat(qs('#shelf-price').value);
+  if(!isNaN(price)&&price>0) sh.price=price;
+  else if(sh.product) sh.price=PROD_MAP[sh.product]?.price||sh.price;
+  notify('Shelf updated!','ok');
+  closeModal('mo-shelf');
+});
+
+// ═══════════════════════════════════════════════════════
+// CANVAS CLICK — SHELF SELECTION
+// ═══════════════════════════════════════════════════════
+storeCanvas.addEventListener('click',e=>{
+  if(currentPanel||currentView!=='store')return;
+  const rect=storeCanvas.getBoundingClientRect();
+  const mx=e.clientX-rect.left, my=e.clientY-rect.top;
+  const {ox,oy}=storeOffset();
+  for(const sh of G.shelves){
+    const sx=ox+sh.gx*CELL, sy=oy+sh.gy*CELL;
+    const sw=sh.gw*CELL, sh2=sh.gh*CELL;
+    if(mx>=sx&&mx<=sx+sw&&my>=sy&&my<=sy+sh2){
+      openShelfModal(sh.id);
+      return;
+    }
+  }
+});
+
+// ═══════════════════════════════════════════════════════
+// MODAL HELPERS
+// ═══════════════════════════════════════════════════════
+function openModal(id){qs('#'+id).classList.add('open');}
+function closeModal(id){qs('#'+id).classList.remove('open');}
+
+document.querySelectorAll('[data-close]').forEach(el=>{
+  el.addEventListener('click',()=>closeModal(el.dataset.close));
+});
+document.querySelectorAll('.moverlay').forEach(ov=>{
+  ov.addEventListener('click',e=>{if(e.target===ov)closeModal(ov.id);});
+});
+
+// ═══════════════════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════════════════
+function switchView(view){
+  currentView=view;
+  currentPanel=null;
+  storeCanvas.style.display=view==='store'?'block':'none';
+  cashCanvas.style.display=view==='cashier'?'block':'none';
+  qsa('.panel').forEach(p=>p.classList.remove('on'));
+  qsa('.nvbtn').forEach(b=>{
+    b.classList.toggle('on',b.dataset.view===view||b.dataset.panel===currentPanel);
+  });
+  if(view==='store')drawStore();
+  else drawCashier();
+}
+
+function switchPanel(panel){
+  if(currentPanel===panel){
+    // toggle off
+    currentPanel=null;
+    switchView(currentView);
+    return;
+  }
+  currentPanel=panel;
+  storeCanvas.style.display='none';
+  cashCanvas.style.display='none';
+  qsa('.panel').forEach(p=>p.classList.remove('on'));
+  qs('#panel-'+panel)?.classList.add('on');
+  qsa('.nvbtn').forEach(b=>{
+    b.classList.toggle('on',b.dataset.panel===panel);
+  });
+  // Render panel content
+  if(panel==='shipments') renderShipmentsPanel();
+  else if(panel==='employees') renderEmployeesPanel();
+  else if(panel==='licenses') renderLicensesPanel();
+  else if(panel==='expansion') renderExpansionPanel();
+}
+
+qsa('[data-view]').forEach(btn=>{
+  btn.addEventListener('click',()=>switchView(btn.dataset.view));
+});
+qsa('[data-panel]').forEach(btn=>{
+  btn.addEventListener('click',()=>switchPanel(btn.dataset.panel));
+});
+
+// ═══════════════════════════════════════════════════════
+// TOP BAR BUTTONS
+// ═══════════════════════════════════════════════════════
+qs('#btn-pause').addEventListener('click',()=>{
+  G.paused=!G.paused;
+  qs('#btn-pause').textContent=G.paused?'▶ Resume':'⏸ Pause';
+  if(G.paused)notify('Game paused.','');
+});
+
+qs('#btn-spd').addEventListener('click',()=>{
+  G.speed=G.speed===1?2:G.speed===2?4:1;
+  qs('#btn-spd').textContent=G.speed+'× Speed';
+});
+
+qs('#btn-save').addEventListener('click',saveGame);
+
+qs('#btn-tomenu').addEventListener('click',()=>{
+  if(confirm('Return to main menu? Unsaved progress may be lost.')){
+    cancelAnimationFrame(rafId);
+    rafId=null; lastTs=null;
+    G.customers=[];
+    showScreen('menu');
+  }
+});
+
+// ═══════════════════════════════════════════════════════
+// MENU BUTTONS
+// ═══════════════════════════════════════════════════════
+qs('#btn-new').addEventListener('click',()=>openModal('mo-new'));
+qs('#btn-load').addEventListener('click',()=>{
+  renderSaveSlots();
+  openModal('mo-load');
+});
+qs('#btn-about').addEventListener('click',()=>openModal('mo-about'));
+
+qs('#btn-startnew').addEventListener('click',()=>{
+  const owner=qs('#inp-owner').value.trim()||'Mark';
+  const store=qs('#inp-store').value.trim()||"Old Mark's Market";
+  const slot=+qs('#sel-slot').value;
+  closeModal('mo-new');
+  G=freshState(owner, store, slot);
+  saveGame();
+  startGame();
+});
+
+function renderSaveSlots(){
+  const el=qs('#save-slots');
+  const slots=getSaveSlots();
+  el.innerHTML=slots.map((s,i)=>{
+    if(!s)return `<div class="saveslot empty"><span class="ssico">📂</span><div><div class="ssname">Slot ${i+1} — Empty</div><div class="ssinfo">No save data</div></div></div>`;
+    const dt=new Date(s.savedAt);
+    return `<div class="saveslot" onclick="loadGame(${i})">
+      <span class="ssico">💾</span>
+      <div>
+        <div class="ssname">${s.storeName}</div>
+        <div class="ssinfo">Day ${s.day} · ${fmt$(s.money)} · Saved ${dt.toLocaleDateString()}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+window.loadGame=function(slot){
+  const data=loadSlot(slot);
+  if(!data){notify('No save in this slot.','err');return;}
+  closeModal('mo-load');
+  applyLoad(data,slot);
+  startGame();
+  notify(`Loaded "${G.storeName}" — Day ${G.day}`,'ok');
+};
+
+// ═══════════════════════════════════════════════════════
+// HIRE MODAL
+// ═══════════════════════════════════════════════════════
+qs('#btn-confirm-hire').addEventListener('click',()=>{
+  if(!pendingHireType)return;
+  const t=EMP_TYPES.find(x=>x.id===pendingHireType);
+  if(G.money<t.wage*2){notify('Need at least 2 days wages to hire!','err');closeModal('mo-hire');return;}
+  const name=EMP_NAMES[Math.floor(Math.random()*EMP_NAMES.length)];
+  G.employees.push({id:G.nextEmpId++,name,type:t.id,wage:t.wage,emoji:t.emoji});
+  notify(`👤 ${name} hired as ${t.name}!`,'ok');
+  closeModal('mo-hire');
+  renderEmployeesPanel();
+});
+
+// ═══════════════════════════════════════════════════════
+// ORDER PLACEMENT
+// ═══════════════════════════════════════════════════════
+qs('#btn-placeorder').addEventListener('click',()=>{
+  const items=PRODUCTS.filter(p=>(G.orderQty[p.id]||0)>0)
+    .map(p=>({id:p.id,qty:G.orderQty[p.id]}));
+  if(items.length===0){notify('Add items to your order first.','err');return;}
+  const total=items.reduce((s,i)=>s+i.qty*PROD_MAP[i.id].cost,0);
+  if(G.money<total){notify('Not enough money for this order!','err');return;}
+  G.money-=total;
+  G.deliveries.push({id:G.nextDelId++,items,cost:total,dayOrdered:G.day,arrived:false,accepted:false});
+  G.orderQty={};
+  notify(`📦 Order placed! Total: ${fmt$(total)}. Arrives tomorrow morning.`,'ok');
+  renderShipmentsPanel();
+});
+
+// ═══════════════════════════════════════════════════════
+// START GAME
+// ═══════════════════════════════════════════════════════
+function startGame(){
+  showScreen('game');
+  resizeCanvases();
+  window.addEventListener('resize',()=>{resizeCanvases();});
+  qs('#store-title').textContent=G.storeName;
+  updateTopbar();
+  switchView('store');
+  isOpen=false; dayEndPending=false; spawnTimer=0; lastTs=null;
+  if(rafId)cancelAnimationFrame(rafId);
+  rafId=requestAnimationFrame(gameLoop);
+
+  setTimeout(()=>{
+    notify(`Welcome to ${G.storeName}! Order stock from Shipments, assign products to shelves, then open for business!`,'ok');
+  },800);
+}
+
+// ═══════════════════════════════════════════════════════
+// BOOT
+// ═══════════════════════════════════════════════════════
+window.addEventListener('load',()=>{
+  showScreen('intro');
+  requestAnimationFrame(()=>{qs('#intro').style.opacity='1';});
+  initIntro();
+});
+</script>
 </body>
 </html>
